@@ -4,13 +4,19 @@ import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { myBookings } from "@/data/mockData";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useState } from "react";
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState(myBookings);
 
-  const cancelBooking = (id: string) => {
+  const cancelBooking = async (id: string) => {
+    try {
+      await api.cancelBooking(parseInt(id));
+    } catch {
+      // Continue with local state update even if API fails
+    }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "cancelled" as const } : b)));
     toast.success("Booking cancelled");
   };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, User, Users, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,29 +6,83 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import AppLayout from "@/components/AppLayout";
-import { weeklySchedule, FitnessClass } from "@/data/mockData";
+import { weeklySchedule as mockSchedule, FitnessClass } from "@/data/mockData";
+import { api, ApiSchedule } from "@/lib/api";
 import { toast } from "sonner";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  HIIT: "hsl(135 100% 55%)",
+  Yoga: "hsl(175 100% 45%)",
+  CrossFit: "hsl(45 100% 55%)",
+  Cardio: "hsl(280 100% 60%)",
+  Pilates: "hsl(175 100% 45%)",
+  Strength: "hsl(0 80% 55%)",
+};
+
+const mapScheduleToClass = (s: ApiSchedule): FitnessClass => ({
+  id: s.id.toString(),
+  name: s.name,
+  trainerId: s.trainer_id.toString(),
+  trainerName: s.trainer_name,
+  time: s.time,
+  date: s.date,
+  day: s.day,
+  capacity: s.capacity,
+  booked: s.booked,
+  duration: s.duration,
+  category: s.category,
+  color: CATEGORY_COLORS[s.category] || "hsl(135 100% 55%)",
+});
 
 const ClassCalendar = () => {
   const [selectedDay, setSelectedDay] = useState("Wednesday");
   const [bookingClass, setBookingClass] = useState<FitnessClass | null>(null);
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set(["1", "8", "11"]));
+  const [classes, setClasses] = useState<FitnessClass[]>(mockSchedule);
+  const [loading, setLoading] = useState(true);
 
-  const dayClasses = weeklySchedule.filter((c) => c.day === selectedDay);
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        const schedules = await api.getSchedules();
+        if (schedules && schedules.length > 0) {
+          setClasses(schedules.map(mapScheduleToClass));
+        }
+      } catch {
+        // Use mock data as fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSchedules();
+  }, []);
+
+  const dayClasses = classes.filter((c) => c.day === selectedDay);
   const isFull = (c: FitnessClass) => c.booked >= c.capacity;
 
-  const handleBook = (cls: FitnessClass) => {
+  const handleBook = async (cls: FitnessClass) => {
     if (bookedIds.has(cls.id)) {
-      setBookedIds((prev) => { const n = new Set(prev); n.delete(cls.id); return n; });
-      toast.success(`Cancelled: ${cls.name}`);
-    } else if (isFull(cls)) {
-      setBookedIds((prev) => new Set(prev).add(cls.id));
-      toast.info(`Added to waitlist for ${cls.name}`);
+      try {
+        await api.cancelBooking(parseInt(cls.id));
+        setBookedIds((prev) => { const n = new Set(prev); n.delete(cls.id); return n; });
+        toast.success(`Cancelled: ${cls.name}`);
+      } catch {
+        // Fallback to local state
+        setBookedIds((prev) => { const n = new Set(prev); n.delete(cls.id); return n; });
+        toast.success(`Cancelled: ${cls.name}`);
+      }
     } else {
-      setBookedIds((prev) => new Set(prev).add(cls.id));
-      toast.success(`Booked: ${cls.name}!`);
+      try {
+        await api.createBooking(parseInt(cls.id));
+        setBookedIds((prev) => new Set(prev).add(cls.id));
+        toast.success(isFull(cls) ? `Added to waitlist for ${cls.name}` : `Booked: ${cls.name}!`);
+      } catch {
+        // Fallback to local state
+        setBookedIds((prev) => new Set(prev).add(cls.id));
+        toast.success(isFull(cls) ? `Added to waitlist for ${cls.name}` : `Booked: ${cls.name}!`);
+      }
     }
     setBookingClass(null);
   };
@@ -145,7 +199,6 @@ const ClassCalendar = () => {
                     <span className="text-primary">Available</span>
                   )}
                 </div>
-                {/* Capacity bar */}
                 <div className="h-2 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
