@@ -40,7 +40,6 @@ const AppLayout = ({ children, role = "member" }: AppLayoutProps) => {
 
   const displayName = user?.name || "John Doe";
   const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase();
-  const links = role === "admin" ? adminLinks : role === "trainer" ? trainerLinks : memberLinks;
 
   return (
     <div className="min-h-screen bg-background flex">
