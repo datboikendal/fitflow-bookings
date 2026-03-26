@@ -29,6 +29,17 @@ const adminLinks = [
 
 const AppLayout = ({ children, role = "member" }: AppLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const links = role === "admin" ? adminLinks : role === "trainer" ? trainerLinks : memberLinks;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const displayName = user?.name || "John Doe";
+  const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase();
   const links = role === "admin" ? adminLinks : role === "trainer" ? trainerLinks : memberLinks;
 
   return (
