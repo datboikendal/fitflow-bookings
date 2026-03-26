@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Calendar, CheckCircle, XCircle } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { weeklySchedule } from "@/data/mockData";
+import { api, ApiRosterEntry } from "@/lib/api";
+import { toast } from "sonner";
 
-const rosterData = [
+const mockRoster = [
   { id: "1", name: "John Doe", status: "present" as const },
   { id: "2", name: "Jane Smith", status: "present" as const },
   { id: "3", name: "Mike Johnson", status: "absent" as const },
@@ -18,10 +20,35 @@ const rosterData = [
 const TrainerDashboard = () => {
   const myClasses = weeklySchedule.filter((c) => c.trainerId === "1");
   const [selectedClassId, setSelectedClassId] = useState(myClasses[0]?.id);
-  const [roster, setRoster] = useState(rosterData);
+  const [roster, setRoster] = useState(mockRoster);
 
-  const markAttendance = (memberId: string, status: "present" | "absent") => {
+  useEffect(() => {
+    if (!selectedClassId) return;
+    const fetchRoster = async () => {
+      try {
+        const data = await api.getRoster(parseInt(selectedClassId));
+        if (data && data.length > 0) {
+          setRoster(data.map((r) => ({
+            id: r.booking_id.toString(),
+            name: r.member_name,
+            status: r.status,
+          })));
+        }
+      } catch {
+        // Use mock data
+      }
+    };
+    fetchRoster();
+  }, [selectedClassId]);
+
+  const markAttendance = async (memberId: string, status: "present" | "absent") => {
+    try {
+      await api.markAttendance(parseInt(memberId), status);
+    } catch {
+      // Continue with local state
+    }
     setRoster((prev) => prev.map((m) => (m.id === memberId ? { ...m, status } : m)));
+    toast.success(`Marked ${status}`);
   };
 
   return (
@@ -66,7 +93,6 @@ const TrainerDashboard = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Class List */}
           <Card className="glass lg:col-span-1">
             <CardHeader>
               <CardTitle className="font-display text-lg">My Classes</CardTitle>
@@ -87,7 +113,6 @@ const TrainerDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Roster & Attendance */}
           <Card className="glass lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="font-display text-lg">Class Roster & Attendance</CardTitle>

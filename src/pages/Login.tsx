@@ -1,20 +1,32 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Dumbbell, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Dumbbell, Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { ApiError } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Welcome back!");
-    navigate("/dashboard");
+    try {
+      await login(email, password);
+      toast.success("Welcome back!");
+      navigate("/dashboard");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+      }
+    }
   };
 
   return (
@@ -50,8 +62,8 @@ const Login = () => {
                 <Input id="password" type="password" placeholder="••••••••" className="pl-10" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
             </div>
-            <Button type="submit" className="w-full neon-glow gap-2">
-              Sign In <ArrowRight className="h-4 w-4" />
+            <Button type="submit" className="w-full neon-glow gap-2" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign In"} <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
           <div className="mt-6 text-center">

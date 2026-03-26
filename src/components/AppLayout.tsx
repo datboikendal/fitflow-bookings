@@ -1,6 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Dumbbell, LayoutDashboard, Calendar, ClipboardList, Users, BarChart3, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -28,7 +29,17 @@ const adminLinks = [
 
 const AppLayout = ({ children, role = "member" }: AppLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const links = role === "admin" ? adminLinks : role === "trainer" ? trainerLinks : memberLinks;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const displayName = user?.name || "John Doe";
+  const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase();
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -62,16 +73,16 @@ const AppLayout = ({ children, role = "member" }: AppLayoutProps) => {
         </nav>
         <div className="p-4 border-t border-border/30">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">JD</div>
+            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{initials}</div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">John Doe</div>
-              <div className="text-xs text-muted-foreground capitalize">{role}</div>
+              <div className="text-sm font-medium truncate">{displayName}</div>
+              <div className="text-xs text-muted-foreground capitalize">{user?.role || role}</div>
             </div>
           </div>
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 mt-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 mt-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full">
             <LogOut className="h-4 w-4" />
             Sign Out
-          </Link>
+          </button>
         </div>
       </aside>
 
